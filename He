@@ -1,0 +1,87 @@
+-- Variables
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local userInputService = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+
+local flying = false
+local flySpeed = 50
+local flyKey = Enum.KeyCode.F
+
+-- Function to enable flying
+local function enableFlying()
+    flying = true
+    humanoid.PlatformStand = true -- Disables gravity for the character
+
+    -- Create a BodyVelocity object for movement
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bodyVelocity.Parent = character.PrimaryPart
+
+    -- Fly logic
+    local connection
+    connection = runService.Heartbeat:Connect(function(deltaTime)
+        if not flying then
+            connection:Disconnect()
+            return
+        end
+
+        -- Get the camera's look vector
+        local camera = workspace.CurrentCamera
+        local lookVector = camera.CFrame.LookVector
+        local moveDirection = Vector3.new(0, 0, 0)
+
+        -- Check for movement inputs
+        if userInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + lookVector
+        end
+        if userInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - lookVector
+        end
+        if userInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - camera.CFrame.RightVector
+        end
+        if userInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + camera.CFrame.RightVector
+        end
+        if userInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDirection = moveDirection + Vector3.new(0, 1, 0)
+        end
+        if userInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveDirection = moveDirection - Vector3.new(0, 1, 0)
+        end
+
+        -- Normalize and apply movement
+        if moveDirection.Magnitude > 0 then
+            moveDirection = moveDirection.Unit * flySpeed
+        end
+        bodyVelocity.Velocity = moveDirection
+    end)
+end
+
+-- Function to disable flying
+local function disableFlying()
+    flying = false
+    humanoid.PlatformStand = false -- Re-enables gravity
+
+    -- Remove the BodyVelocity object
+    local bodyVelocity = character.PrimaryPart:FindFirstChild("BodyVelocity")
+    if bodyVelocity then
+        bodyVelocity:Destroy()
+    end
+end
+
+-- Toggle flying on key press
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end -- Ignore if the game already processed the input
+
+    if input.KeyCode == flyKey then
+        if flying then
+            disableFlying()
+        else
+            enableFlying()
+        end
+    end
+end)
